@@ -11,6 +11,7 @@ import net.milkbowl.vault.economy.Economy;
 import org.black_ixx.playerpoints.PlayerPoints;
 import org.black_ixx.playerpoints.PlayerPointsAPI;
 import org.bukkit.Bukkit;
+import org.bukkit.event.Listener;
 import org.bukkit.plugin.RegisteredServiceProvider;
 
 import static com.cortezromeo.taixiu.util.MessageUtil.log;
@@ -27,7 +28,7 @@ public class Support {
     public boolean vaultSupported = false;
 
     public boolean isPlaceholderAPISupported() {
-      return placeholderAPISupported;
+        return placeholderAPISupported;
     }
 
     public boolean isPlayerPointsSupported() {
@@ -79,7 +80,9 @@ public class Support {
 
         // PlaceholderAPI
         if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
-            new PlaceholderAPISupport().register();
+            PlaceholderAPISupport papiSupport = new PlaceholderAPISupport();
+            papiSupport.register();
+            Bukkit.getPluginManager().registerEvents((Listener) papiSupport, TaiXiu.plugin); // Đăng ký listener
             placeholderAPISupported = true;
         }
 

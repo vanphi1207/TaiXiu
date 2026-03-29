@@ -6,9 +6,25 @@ import com.cortezromeo.taixiu.manager.DatabaseManager;
 import com.cortezromeo.taixiu.manager.TaiXiuManager;
 import com.cortezromeo.taixiu.util.MessageUtil;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
-import org.bukkit.entity.Player;
+import me.clip.placeholderapi.events.ExpansionUnregisterEvent;
+import org.bukkit.Bukkit;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
 
-public class PlaceholderAPISupport extends PlaceholderExpansion {
+public class PlaceholderAPISupport extends PlaceholderExpansion implements Listener {
+
+    @EventHandler
+    public void onExpansionUnregister(ExpansionUnregisterEvent event) {
+        if (event.getExpansion().getIdentifier().equalsIgnoreCase(getIdentifier())) {
+            // Delay 1 tick để PlaceholderAPI hoàn tất quá trình reload trước khi đăng ký lại
+            Bukkit.getScheduler().runTaskLater(TaiXiu.plugin, () -> {
+                if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
+                    new PlaceholderAPISupport().register();
+                    MessageUtil.log("&a[TAI XIU] PlaceholderAPI expansion re-registered after reload.");
+                }
+            }, 5L);
+        }
+    }
 
     @Override
     public String getAuthor() {
@@ -25,13 +41,26 @@ public class PlaceholderAPISupport extends PlaceholderExpansion {
         return TaiXiu.plugin.getDescription().getVersion();
     }
 
+
     @Override
-    public String onPlaceholderRequest(Player player, String s) {
+    public boolean persist() {
+        return true;
+    }
+
+
+    @Override
+    public boolean canRegister() {
+        return TaiXiu.plugin != null && TaiXiu.plugin.isEnabled();
+    }
+
+    @Override
+    public String onPlaceholderRequest(org.bukkit.entity.Player player, String s) {
         if (s == null)
             return null;
 
         if (s.equals("phien") || s.equals("currentsession"))
             return String.valueOf(TaiXiuManager.getSessionData().getSession());
+
 
         if (s.equals("timeleft")) {
             return String.valueOf(TaiXiuManager.getTimeLeft());
@@ -42,10 +71,8 @@ public class PlaceholderAPISupport extends PlaceholderExpansion {
             if (sessionNumber.equals("current") || sessionNumber.equals("hientai"))
                 sessionNumber = String.valueOf(TaiXiuManager.getSessionData().getSession());
 
-            ISession session = DatabaseManager.taiXiuData.get(Long.valueOf(sessionNumber));
-            if (session == null) {
-                return "";
-            }
+            ISession session = getSessionSafe(sessionNumber);
+            if (session == null) return "";
             return String.valueOf(session.getResult());
         }
 
@@ -54,11 +81,9 @@ public class PlaceholderAPISupport extends PlaceholderExpansion {
             if (sessionNumber.equals("current") || sessionNumber.equals("hientai"))
                 sessionNumber = String.valueOf(TaiXiuManager.getSessionData().getSession());
 
-            ISession session = DatabaseManager.taiXiuData.get(Long.valueOf(sessionNumber));
-            if (session == null) {
-                return "";
-            }
-            return MessageUtil.getFormatResultName(session.getResult());
+            ISession session = getSessionSafe(sessionNumber);
+            if (session == null) return "";
+            return com.cortezromeo.taixiu.util.MessageUtil.getFormatResultName(session.getResult());
         }
 
         if (s.startsWith("taiplayers_phien_")) {
@@ -66,10 +91,8 @@ public class PlaceholderAPISupport extends PlaceholderExpansion {
             if (sessionNumber.equals("current") || sessionNumber.equals("hientai"))
                 sessionNumber = String.valueOf(TaiXiuManager.getSessionData().getSession());
 
-            ISession session = DatabaseManager.taiXiuData.get(Long.valueOf(sessionNumber));
-            if (session == null) {
-                return "";
-            }
+            ISession session = getSessionSafe(sessionNumber);
+            if (session == null) return "";
             return String.valueOf(session.getTaiPlayers());
         }
 
@@ -78,10 +101,8 @@ public class PlaceholderAPISupport extends PlaceholderExpansion {
             if (sessionNumber.equals("current") || sessionNumber.equals("hientai"))
                 sessionNumber = String.valueOf(TaiXiuManager.getSessionData().getSession());
 
-            ISession session = DatabaseManager.taiXiuData.get(Long.valueOf(sessionNumber));
-            if (session == null) {
-                return "";
-            }
+            ISession session = getSessionSafe(sessionNumber);
+            if (session == null) return "";
             return String.valueOf(session.getXiuPlayers());
         }
 
@@ -90,10 +111,8 @@ public class PlaceholderAPISupport extends PlaceholderExpansion {
             if (sessionNumber.equals("current") || sessionNumber.equals("hientai"))
                 sessionNumber = String.valueOf(TaiXiuManager.getSessionData().getSession());
 
-            ISession session = DatabaseManager.taiXiuData.get(Long.valueOf(sessionNumber));
-            if (session == null) {
-                return "";
-            }
+            ISession session = getSessionSafe(sessionNumber);
+            if (session == null) return "";
 
             long sum = 0L;
             if (session.getTaiPlayers() != null) {
@@ -101,7 +120,6 @@ public class PlaceholderAPISupport extends PlaceholderExpansion {
                     sum += value;
                 }
             }
-
             return String.valueOf(sum);
         }
 
@@ -110,10 +128,8 @@ public class PlaceholderAPISupport extends PlaceholderExpansion {
             if (sessionNumber.equals("current") || sessionNumber.equals("hientai"))
                 sessionNumber = String.valueOf(TaiXiuManager.getSessionData().getSession());
 
-            ISession session = DatabaseManager.taiXiuData.get(Long.valueOf(sessionNumber));
-            if (session == null) {
-                return "";
-            }
+            ISession session = getSessionSafe(sessionNumber);
+            if (session == null) return "";
 
             long sum = 0L;
             if (session.getXiuPlayers() != null) {
@@ -121,7 +137,6 @@ public class PlaceholderAPISupport extends PlaceholderExpansion {
                     sum += value;
                 }
             }
-
             return String.valueOf(sum);
         }
 
@@ -130,12 +145,35 @@ public class PlaceholderAPISupport extends PlaceholderExpansion {
             if (sessionNumber.equals("current") || sessionNumber.equals("hientai"))
                 sessionNumber = String.valueOf(TaiXiuManager.getSessionData().getSession());
 
-            ISession session = DatabaseManager.taiXiuData.get(Long.valueOf(sessionNumber));
-            if (session == null) {
-                return "";
-            }
+            ISession session = getSessionSafe(sessionNumber);
+            if (session == null) return "";
             return String.valueOf(TaiXiuManager.getTotalBet(session));
         }
+
         return null;
+    }
+
+
+    private ISession getSessionSafe(String sessionNumberStr) {
+        try {
+            long sessionNumber = Long.parseLong(sessionNumberStr);
+
+            if (sessionNumber == TaiXiuManager.getSessionData().getSession()) {
+                return TaiXiuManager.getSessionData();
+            }
+
+            if (DatabaseManager.taiXiuData.containsKey(sessionNumber)) {
+                return DatabaseManager.taiXiuData.get(sessionNumber);
+            }
+
+            if (DatabaseManager.checkExistsFileData(sessionNumber)) {
+                DatabaseManager.loadSessionData(sessionNumber);
+                return DatabaseManager.taiXiuData.get(sessionNumber);
+            }
+
+            return null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 }

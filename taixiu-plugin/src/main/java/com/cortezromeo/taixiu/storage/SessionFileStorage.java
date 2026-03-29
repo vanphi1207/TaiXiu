@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-public class SessionFileStorage implements SessionStorage  {
+public class SessionFileStorage implements SessionStorage {
 
     private static File getFile(long session) {
         File file = new File(TaiXiu.plugin.getDataFolder() + "/session/" + String.valueOf(session) + ".yml");
@@ -31,7 +31,8 @@ public class SessionFileStorage implements SessionStorage  {
 
         HashMap<String, Long> taiPlayers = new HashMap<>();
         HashMap<String, Long> xiuPlayers = new HashMap<>();
-        SessionData data = new SessionData(session, 0, 0, 0, TaiXiuResult.NONE, taiPlayers, xiuPlayers, CurrencyTyppe.valueOf(TaiXiu.plugin.getConfig().getString("currency-settings.default").toUpperCase()));
+        SessionData data = new SessionData(session, 0, 0, 0, TaiXiuResult.NONE, taiPlayers, xiuPlayers,
+                CurrencyTyppe.valueOf(TaiXiu.plugin.getConfig().getString("currency-settings.default").toUpperCase()));
 
         if (!storage.contains("data"))
             return data;
@@ -40,13 +41,22 @@ public class SessionFileStorage implements SessionStorage  {
         data.setDice1(storage.getInt("data.dice1"));
         data.setDice2(storage.getInt("data.dice2"));
         data.setDice3(storage.getInt("data.dice3"));
-        if (storage.getString("data.currency") != null)
-            data.setCurrencyType(CurrencyTyppe.valueOf(storage.getString("data.currency").toUpperCase()));
-        data.setCurrencyType(CurrencyTyppe.VAULT);
+
+
+        if (storage.getString("data.currency") != null) {
+            try {
+                data.setCurrencyType(CurrencyTyppe.valueOf(storage.getString("data.currency").toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                TaiXiu.plugin.getLogger().warning("[TaiXiu] Invalid currency type in session file " + file.getName() + ", using default.");
+            }
+        }
+
         data.setResult(TaiXiuResult.valueOf(storage.getString("data.result")));
+
         if (storage.get("data.taiPlayers") != null)
             for (String player : storage.getConfigurationSection("data.taiPlayers").getKeys(false))
                 data.addTaiPlayer(player, storage.getLong("data.taiPlayers." + player));
+
         if (storage.get("data.xiuPlayers") != null)
             for (String player : storage.getConfigurationSection("data.xiuPlayers").getKeys(false))
                 data.addXiuPlayer(player, storage.getLong("data.xiuPlayers." + player));
@@ -67,12 +77,12 @@ public class SessionFileStorage implements SessionStorage  {
             data.setCurrencyType(CurrencyTyppe.VAULT);
         storage.set("data.currency", data.getCurrencyType().toString());
         if (data.getTaiPlayers() != null) {
-            List<String> listTaiPlayersKey = new ArrayList<String>(data.getTaiPlayers().keySet());
+            List<String> listTaiPlayersKey = new ArrayList<>(data.getTaiPlayers().keySet());
             for (String key : listTaiPlayersKey)
                 storage.set("data.taiPlayers." + key, data.getTaiPlayers().get(key));
         }
         if (data.getXiuPlayers() != null) {
-            List<String> listXiuPlayersKey = new ArrayList<String>(data.getXiuPlayers().keySet());
+            List<String> listXiuPlayersKey = new ArrayList<>(data.getXiuPlayers().keySet());
             for (String key : listXiuPlayersKey)
                 storage.set("data.xiuPlayers." + key, data.getXiuPlayers().get(key));
         }
@@ -92,5 +102,4 @@ public class SessionFileStorage implements SessionStorage  {
         final File file = getFile(session);
         return fromFile(file, session);
     }
-
 }
